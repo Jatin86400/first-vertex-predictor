@@ -22,7 +22,8 @@
             "min_area": 100,
             "sub_th": 0,
             "class_filter": [
-                "Character Line Segment"
+                "Hole(Physical)",
+                "Picture"
             ]
         },
         "train_val" : {
@@ -35,7 +36,8 @@
             "min_area": 100,
             "sub_th": 0,
             "class_filter": [
-                 "Character Line Segment"
+                "Hole(Physical)",
+                "Picture"
             ]
         }
     }
