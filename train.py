@@ -61,7 +61,7 @@ class Trainer(object):
         self.global_step = 0
         self.epoch = 0
         self.opts = opts
-        create_folder(os.path.join(self.opts['exp_dir'], 'checkpoints_edge+fp'))
+        create_folder(os.path.join(self.opts['exp_dir'], 'checkpoints_oldmodel_relu'))
 
        # Copy experiment file
         os.system('cp %s %s'%(args.exp, self.opts['exp_dir']))
@@ -72,8 +72,8 @@ class Trainer(object):
         self.train_loader, self.val_loader = get_data_loaders(self.opts['dataset'], image_provider.DataProvider)
         self.model = Model(64,64*12,3)
         self.model = self.model.to(device)
-        self.edge_loss_fn =nn.CrossEntropyLoss()
-        self.fp_loss_fn = nn.CrossEntropyLoss()
+        self.edge_loss_fn =nn.MSELoss()
+        self.fp_loss_fn = nn.BCELoss()
         # Allow individual options
         self.optimizer = optim.Adam(self.model.parameters(),lr = self.opts['lr'])
         for name,param in self.model.named_parameters():
@@ -90,7 +90,7 @@ class Trainer(object):
             'lr_decay': self.lr_decay.state_dict()
         }
 
-        save_name = os.path.join(self.opts['exp_dir'], 'checkpoints_edge+fp', 'epoch%d_step%d.pth'\
+        save_name = os.path.join(self.opts['exp_dir'], 'checkpoints_oldmodel_relu', 'epoch%d_step%d.pth'\
         %(epoch, self.global_step))
         torch.save(save_state, save_name)
         print('Saved model')
@@ -137,9 +137,9 @@ class Trainer(object):
             fp_mask = data["fp_mask"]
             fp_mask = fp_mask.view(fp_mask.shape[0],-1)
             self.optimizer.zero_grad()
-            edge_loss = F.binary_cross_entropy(edge_logits,edge_mask.cuda())
-            fp_loss =F.binary_cross_entropy(fp_logits,fp_mask.cuda())
-            loss = edge_loss + fp_loss
+            edge_loss = self.edge_loss_fn(edge_logits,edge_mask.cuda())
+            fp_loss =self.fp_loss_fn(fp_logits,fp_mask.cuda())
+            loss = edge_loss + 10*fp_loss
             loss.backward()
             self.optimizer.step()
             edge_losses.append(edge_loss.item())
@@ -192,9 +192,9 @@ class Trainer(object):
                 img = img.float()
            
                 edge_logits,fp_logits= self.model(img.cuda())
-                edge_loss = F.binary_cross_entropy_with_logits(edge_logits,edge_mask.cuda())
-                fp_loss = F.binary_cross_entropy_with_logits(fp_logits,fp_mask.cuda())
-                loss = edge_loss  + fp_loss
+                edge_loss =self.edge_loss_fn(edge_logits,edge_mask.cuda())
+                fp_loss = self.fp_loss_fn(fp_logits,fp_mask.cuda())
+                loss = edge_loss  + 10*fp_loss
                 losses.append(loss.item())
                 edge_losses.append(edge_loss.item())
                 fp_losses.append(fp_loss.item())
