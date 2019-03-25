@@ -11,6 +11,8 @@ from skimage.transform import resize
 import skimage.color as color
 from skimage.io import imsave
 import utils
+import torchvision
+import random
 EPS = 1e-7 
 def process_info(args):
     """
@@ -173,6 +175,26 @@ class DataProvider(Dataset):
         poly = component["poly"]
         
         img = img[y0:y0+h,x0:x0+w]
+        color_jitter = torchvision.transforms.ColorJitter(brightness=2.5, contrast=2.5, saturation=2.5)
+        grey_scale = torchvision.transforms.Grayscale(num_output_channels=3)
+        pil = torchvision.transforms.ToPILImage()
+        if self.mode=="train":
+            img = pil(img)
+            if random.randint(1,4)==1:
+                img = color_jitter(img)
+            else:
+                if random.randint(1,4)==1:
+                    img = grey_scale(img)
+            img = np.array(img)
+        else:
+            img2 = pil(img)
+            img2 = color_jitter(img2)
+            img3 = grey_scale(pil(img))
+            img2 = np.array(img2)
+            img3 = np.array(img3)
+            #if random.randint(1,5)==1:
+            # img = cv2.GaussianBlur(img,(3,3),0)
+            #print(img.shape)
         poly = np.array(poly).astype(np.float)
         poly[:,0] = poly[:,0] - x0
         poly[:,1] = poly[:,1] - y0
@@ -183,6 +205,7 @@ class DataProvider(Dataset):
         edge_mask = utils.get_edge_mask(poly,edge_mask)
         fp_mask = np.zeros((16,192),np.float32)
         fp_mask = utils.get_fp_mask(poly,fp_mask)
+        #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         #index = 0
        # for i in range(len(instance['image_url'])):
             #if instance['image_url'][i]=='/':
@@ -190,6 +213,8 @@ class DataProvider(Dataset):
        # imsave("/home/jatin/image_classifier/test_image/"+instance['image_url'][index+1:],img)
         #print("saved image")
         img  = cv2.resize(img,(768,64))
+       # img2  = cv2.resize(img2,(768,64))
+        #img3  = cv2.resize(img3,(768,64))
         #print(img)
         #imsave("/home/jatin/image_classifier/test_image/"+"resize"+instance['image_url'][index+1:],img)
         #print('out of resize')
@@ -205,7 +230,9 @@ class DataProvider(Dataset):
                     "x0" : x0,
                     "y0" : y0,
                     "w" : w,
-                    "h" : h,
+                    "h" : h
+                   # "img2":img2,
+                   # "img3":img3
                     }
         
         return return_dict
