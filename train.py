@@ -61,7 +61,7 @@ class Trainer(object):
         self.global_step = 0
         self.epoch = 0
         self.opts = opts
-        create_folder(os.path.join(self.opts['exp_dir'], 'checkpoints_oldmodel_relu'))
+        create_folder(os.path.join(self.opts['exp_dir'], 'checkpoints_edges1_augmented6'))
 
        # Copy experiment file
         os.system('cp %s %s'%(args.exp, self.opts['exp_dir']))
@@ -72,10 +72,22 @@ class Trainer(object):
         self.train_loader, self.val_loader = get_data_loaders(self.opts['dataset'], image_provider.DataProvider)
         self.model = Model(64,64*12,3)
         self.model = self.model.to(device)
+        #self.model.edge_model.reload(self.opts["model_path"])
+        
         self.edge_loss_fn =nn.MSELoss()
-        self.fp_loss_fn = nn.BCELoss()
+        #self.fp_loss_fn = nn.BCELoss()
         # Allow individual options
-        self.optimizer = optim.Adam(self.model.parameters(),lr = self.opts['lr'])
+        wd = []
+        for name, p in self.model.named_parameters():
+            if not p.requires_grad:
+                # No optimization for frozen params
+                continue
+            else:
+                wd.append(p)
+                print(name)
+        self.optimizer = optim.Adam([
+                {'params': wd}
+            ],lr = self.opts['lr'])
         for name,param in self.model.named_parameters():
             print(name)
         self.lr_decay = optim.lr_scheduler.StepLR(self.optimizer, step_size=self.opts['lr_decay'], 
@@ -90,7 +102,7 @@ class Trainer(object):
             'lr_decay': self.lr_decay.state_dict()
         }
 
-        save_name = os.path.join(self.opts['exp_dir'], 'checkpoints_oldmodel_relu', 'epoch%d_step%d.pth'\
+        save_name = os.path.join(self.opts['exp_dir'], 'checkpoints_edges1_augmented6', 'epoch%d_step%d.pth'\
         %(epoch, self.global_step))
         torch.save(save_state, save_name)
         print('Saved model')
@@ -132,18 +144,18 @@ class Trainer(object):
             img = torch.transpose(img,1,3)
             img = torch.transpose(img,2,3)
             img = img.float()
-            edge_logits,fp_logits = self.model(img.cuda())
+            edge_logits = self.model(img.cuda())
             edge_mask = data["edge_mask"]
-            fp_mask = data["fp_mask"]
-            fp_mask = fp_mask.view(fp_mask.shape[0],-1)
+            #fp_mask = data["fp_mask"]
+            #fp_mask = fp_mask.view(fp_mask.shape[0],-1)
             self.optimizer.zero_grad()
             edge_loss = self.edge_loss_fn(edge_logits,edge_mask.cuda())
-            fp_loss =self.fp_loss_fn(fp_logits,fp_mask.cuda())
-            loss = edge_loss + 10*fp_loss
+            #fp_loss =self.fp_loss_fn(fp_logits,fp_mask.cuda())
+            loss = edge_loss 
             loss.backward()
             self.optimizer.step()
-            edge_losses.append(edge_loss.item())
-            fp_losses.append(fp_loss.item())
+            #edge_losses.append(edge_loss.item())
+            fp_losses.append(edge_loss.item())
             losses.append(loss.item())
             accum['loss'] += float(loss.item())
             accum['length'] += 1
@@ -162,16 +174,16 @@ class Trainer(object):
        
             self.global_step += 1
         avg_epoch_loss = 0.0
-        avg_edge_loss = 0.0
-        avg_fp_loss = 0.0
+        #avg_edge_loss = 0.0
+        #avg_fp_loss = 0.0
         for i in range(len(losses)):
             avg_epoch_loss += losses[i]
-            avg_edge_loss += edge_losses[i]
-            avg_fp_loss += fp_losses[i]
+            #avg_edge_loss += edge_losses[i]
+            #avg_fp_loss += fp_losses[i]
         avg_epoch_loss = avg_epoch_loss/len(losses)
-        avg_edge_loss = avg_edge_loss/len(losses)
-        avg_fp_loss = avg_fp_loss/len(losses)
-        print("Average Epoch %d loss is : %f edge loss is %f and fp loss is %f"%(epoch,avg_epoch_loss,avg_edge_loss,avg_fp_loss))
+        #avg_edge_loss = avg_edge_loss/len(losses)
+       # avg_fp_loss = avg_fp_loss/len(losses)
+        print("Average Epoch %d loss is : %f "%(epoch,avg_epoch_loss))
     def validate(self):
         print('Validating')
         self.model.eval()
@@ -187,29 +199,29 @@ class Trainer(object):
                 img = torch.transpose(img,1,3)
                 img = torch.transpose(img,2,3)
                 edge_mask = data["edge_mask"]
-                fp_mask = data["fp_mask"]
-                fp_mask = fp_mask.view(fp_mask.shape[0],-1)
+                #fp_mask = data["fp_mask"]
+                #fp_mask = fp_mask.view(fp_mask.shape[0],-1)
                 img = img.float()
            
-                edge_logits,fp_logits= self.model(img.cuda())
+                edge_logits = self.model(img.cuda())
                 edge_loss =self.edge_loss_fn(edge_logits,edge_mask.cuda())
-                fp_loss = self.fp_loss_fn(fp_logits,fp_mask.cuda())
-                loss = edge_loss  + 10*fp_loss
+                #fp_loss = self.fp_loss_fn(fp_logits,fp_mask.cuda())
+                loss = edge_loss
                 losses.append(loss.item())
-                edge_losses.append(edge_loss.item())
-                fp_losses.append(fp_loss.item())
+                #edge_losses.append(edge_loss.item())
+                fp_losses.append(edge_loss.item())
             
         avg_epoch_loss = 0.0
-        avg_edge_loss = 0.0
-        avg_fp_loss = 0.0
+        #avg_edge_loss = 0.0
+        #avg_fp_loss = 0.0
         for i in range(len(losses)):
             avg_epoch_loss += losses[i]
-            avg_edge_loss += edge_losses[i]
-            avg_fp_loss += fp_losses[i]
+            #avg_edge_loss += edge_losses[i]
+            #avg_fp_loss += fp_losses[i]
         avg_epoch_loss = avg_epoch_loss/len(losses)
-        avg_edge_loss = avg_edge_loss/len(losses)
-        avg_fp_loss = avg_fp_loss/len(losses)
-        print("Average VAL error is : %f edge loss is %f and fp loss is %f"%(avg_epoch_loss,avg_edge_loss,avg_fp_loss))
+        #avg_edge_loss = avg_edge_loss/len(losses)
+        #avg_fp_loss = avg_fp_loss/len(losses)
+        print("Average VAL error is : %f "%(avg_epoch_loss))
         self.model.train()
 if __name__ == '__main__':
     args = get_args()
