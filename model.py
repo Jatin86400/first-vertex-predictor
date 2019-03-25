@@ -17,8 +17,8 @@ class Model(nn.Module):
         #self.layer4 = nn.MaxPool2d(3,stride=1,padding=1)
         self.layer5  = nn.Sequential(nn.BatchNorm2d(128),nn.Conv2d(128,128,5,padding=2,bias=True),nn.ReLU())
         self.layer6 = nn.Sequential(nn.BatchNorm2d(128),nn.Conv2d(128,1,1,bias=True))
-        self.layer7 = nn.Sequential(nn.BatchNorm2d(1),nn.Conv2d(1,1,3,stride=2,padding=1,bias=True),nn.ReLU())
-        self.fc1 = nn.Sequential(nn.Linear(3072,3072,bias=True))
+        #self.layer7 = nn.Sequential(nn.BatchNorm2d(1),nn.Conv2d(1,1,3,stride=2,padding=1,bias=True),nn.ReLU())
+        #self.fc1 = nn.Sequential(nn.Linear(3072,3072,bias=True))
         
     def forward(self,input_img):
         
@@ -34,19 +34,9 @@ class Model(nn.Module):
         
         edges = self.layer6(output)
         
-        edges_relu = F.relu(edges)
-        
         edges = F.sigmoid(edges)
-
-        fp = self.layer7(edges_relu)
-
-        fp = fp.view(fp.shape[0],-1)
-
-        fp = self.fc1(fp)
         
-        edges = edges.view(edges.shape[0],edges.shape[2],edges.shape[3])
+        edges =  edges.view(edges.shape[0],edges.shape[2],edges.shape[3])
         
-        fp = F.softmax(fp)
-        
-        return edges,fp
+        return edges
 
