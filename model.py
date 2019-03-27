@@ -34,7 +34,7 @@ class Model(nn.Module):
         
         edges = self.layer6(output)
         
-        edges = F.sigmoid(edges)
+        #edges = F.sigmoid(edges)
         
         edges =  edges.view(edges.shape[0],edges.shape[2],edges.shape[3])
         
