@@ -61,7 +61,7 @@ class Trainer(object):
         self.global_step = 0
         self.epoch = 0
         self.opts = opts
-        create_folder(os.path.join(self.opts['exp_dir'], 'checkpoints_edges1_augmented6'))
+        create_folder(os.path.join(self.opts['exp_dir'], 'checkpoints_edges1_augmented6_bce'))
 
        # Copy experiment file
         os.system('cp %s %s'%(args.exp, self.opts['exp_dir']))
@@ -74,7 +74,7 @@ class Trainer(object):
         self.model = self.model.to(device)
         #self.model.edge_model.reload(self.opts["model_path"])
         
-        self.edge_loss_fn =nn.MSELoss()
+        self.edge_loss_fn = nn.BCEWithLogitsLoss()
         #self.fp_loss_fn = nn.BCELoss()
         # Allow individual options
         wd = []
@@ -102,7 +102,7 @@ class Trainer(object):
             'lr_decay': self.lr_decay.state_dict()
         }
 
-        save_name = os.path.join(self.opts['exp_dir'], 'checkpoints_edges1_augmented6', 'epoch%d_step%d.pth'\
+        save_name = os.path.join(self.opts['exp_dir'], 'checkpoints_edges1_augmented6_bce', 'epoch%d_step%d.pth'\
         %(epoch, self.global_step))
         torch.save(save_state, save_name)
         print('Saved model')
